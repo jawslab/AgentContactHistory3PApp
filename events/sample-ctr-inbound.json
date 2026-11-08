@@ -1,0 +1,20 @@
+{
+  "ContactId": "11111111-aaaa-bbbb-cccc-222222222222",
+  "InitiationMethod": "INBOUND",
+  "Channel": "VOICE",
+  "InitiationTimestamp": "2025-08-14T10:00:00Z",
+  "DisconnectTimestamp": "2025-08-14T10:05:30Z",
+  "DisconnectReason": "CUSTOMER_DISCONNECT",
+  "CustomerEndpoint": { "Address": "+15555550100", "Type": "TELEPHONE_NUMBER" },
+  "SystemEndpoint": { "Address": "+18005551234", "Type": "TELEPHONE_NUMBER" },
+  "Queue": {
+    "Name": "BasicQueue",
+    "ARN": "arn:aws:connect:us-east-1:111122223333:instance/inst-id/queue/queue-id"
+  },
+  "Agent": {
+    "ARN": "arn:aws:connect:us-east-1:111122223333:instance/inst-id/agent/agent-abc-123",
+    "Username": "jdoe",
+    "AgentInteractionDuration": 330,
+    "ConnectedToAgentTimestamp": "2025-08-14T10:00:10Z"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "kinesis": {
+        "kinesisSchemaVersion": "1.0",
+        "partitionKey": "agent-abc-123",
+        "sequenceNumber": "49590000000000000000000000000000000000000000000000000000",
+        "data": "eyJDb250YWN0SWQiOiIxMTExMTExMS1hYWFhLWJiYmItY2NjYy0yMjIyMjIyMjIyMjIiLCJJbml0aWF0aW9uTWV0aG9kIjoiSU5CT1VORCIsIkNoYW5uZWwiOiJWT0lDRSIsIkluaXRpYXRpb25UaW1lc3RhbXAiOiIyMDI1LTA4LTE0VDEwOjAwOjAwWiIsIkRpc2Nvbm5lY3RUaW1lc3RhbXAiOiIyMDI1LTA4LTE0VDEwOjA1OjMwWiIsIkRpc2Nvbm5lY3RSZWFzb24iOiJDVVNUT01FUl9ESVNDT05ORUNUIiwiQ3VzdG9tZXJFbmRwb2ludCI6eyJBZGRyZXNzIjoiKzE1NTU1NTUwMTAwIiwiVHlwZSI6IlRFTEVQSE9ORV9OVU1CRVIifSwiUXVldWUiOnsiTmFtZSI6IkJhc2ljUXVldWUifSwiQWdlbnQiOnsiQVJOIjoiYXJuOmF3czpjb25uZWN0OnVzLWVhc3QtMToxMTExMjIyMjMzMzM6aW5zdGFuY2UvaW5zdC1pZC9hZ2VudC9hZ2VudC1hYmMtMTIzIiwiVXNlcm5hbWUiOiJqZG9lIiwiQWdlbnRJbnRlcmFjdGlvbkR1cmF0aW9uIjozMzB9fQ==",
+        "approximateArrivalTimestamp": 1723629930.0
+      },
+      "eventSource": "aws:kinesis",
+      "eventVersion": "1.0",
+      "eventID": "shardId-000000000000:49590000000000000000000000000000000000000000000000000000",
+      "eventName": "aws:kinesis:record",
+      "invokeIdentityArn": "arn:aws:iam::111122223333:role/ctr-processor-role",
+      "awsRegion": "us-east-1",
+      "eventSourceARN": "arn:aws:kinesis:us-east-1:111122223333:stream/agent-contact-history-ctr-stream"
+    }
+  ]
+}

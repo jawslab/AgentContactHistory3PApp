@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Agent Contact History for the Amazon Connect agent workspace (3P application).
+  Serverless backend: Kinesis -> Lambda -> DynamoDB -> Lambda -> HTTP API.
+
+Parameters:
+  TableName:
+    Type: String
+    Default: AgentContactHistory
+    Description: Name of the DynamoDB table that stores contact history.
+  CreateKinesisStream:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Whether to create a dedicated Kinesis stream for CTRs. Set to "false" if you
+      will attach the processor to an existing stream (set ExistingStreamArn).
+  ExistingStreamArn:
+    Type: String
+    Default: ""
+    Description: ARN of an existing Kinesis stream (used only when CreateKinesisStream=false).
+  TtlHours:
+    Type: Number
+    Default: 24
+    Description: How many hours a contact history record is retained before TTL deletes it.
+  CorsAllowOrigin:
+    Type: String
+    Default: "*"
+    Description: Allowed CORS origin for the HTTP API (set to the widget origin in prod).
+
+Conditions:
+  ShouldCreateStream: !Equals [!Ref CreateKinesisStream, "true"]
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 256
+    Timeout: 30
+    Architectures: [arm64]
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref TableName
+        LOG_LEVEL: INFO
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # DynamoDB table (Step 1)
+  # ---------------------------------------------------------------------------
+  ContactHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: N
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ExpirationTime
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ---------------------------------------------------------------------------
+  # Kinesis stream for CTRs (optional)
+  # ---------------------------------------------------------------------------
+  CtrStream:
+    Type: AWS::Kinesis::Stream
+    Condition: ShouldCreateStream
+    Properties:
+      Name: !Sub "${AWS::StackName}-ctr-stream"
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  # ---------------------------------------------------------------------------
+  # CTR Processor Lambda (Step 2)
+  # ---------------------------------------------------------------------------
+  CtrProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ctr-processor"
+      Handler: ctr-processor/handler.handler
+      CodeUri: ../backend/dist
+      Environment:
+        Variables:
+          TTL_HOURS: !Ref TtlHours
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref ContactHistoryTable
+      Events:
+        CtrStreamEvent:
+          Type: Kinesis
+          Properties:
+            Stream: !If
+              - ShouldCreateStream
+              - !GetAtt CtrStream.Arn
+              - !Ref ExistingStreamArn
+            StartingPosition: LATEST
+            BatchSize: 100
+            MaximumBatchingWindowInSeconds: 5
+            BisectBatchOnFunctionError: true
+            MaximumRetryAttempts: 3
+
+  # ---------------------------------------------------------------------------
+  # Query Lambda (Step 3)
+  # ---------------------------------------------------------------------------
+  QueryHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-query-history"
+      Handler: query-history/handler.handler
+      CodeUri: ../backend/dist
+      Environment:
+        Variables:
+          CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ContactHistoryTable
+      Events:
+        GetContactHistory:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ContactHistoryApi
+            Path: /contact-history
+            Method: GET
+
+  # ---------------------------------------------------------------------------
+  # API Gateway HTTP API (Step 4)
+  # ---------------------------------------------------------------------------
+  ContactHistoryApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref CorsAllowOrigin
+        AllowMethods:
+          - GET
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+      # --- Production SSO: uncomment to require JWTs from your IdP ---
+      # Auth:
+      #   DefaultAuthorizer: JwtAuthorizer
+      #   Authorizers:
+      #     JwtAuthorizer:
+      #       IdentitySource: "$request.header.Authorization"
+      #       JwtConfiguration:
+      #         issuer: "https://YOUR_IDP_ISSUER"
+      #         audience:
+      #           - "YOUR_APP_CLIENT_ID"
+
+Outputs:
+  ContactHistoryApiUrl:
+    Description: Base URL of the contact history HTTP API.
+    Value: !Sub "https://${ContactHistoryApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  ContactHistoryEndpoint:
+    Description: Full endpoint to call from the widget (VITE_API_ENDPOINT).
+    Value: !Sub "https://${ContactHistoryApi}.execute-api.${AWS::Region}.amazonaws.com/prod/contact-history"
+  TableNameOutput:
+    Description: DynamoDB table name.
+    Value: !Ref ContactHistoryTable
+  CtrStreamArn:
+    Condition: ShouldCreateStream
+    Description: ARN of the created Kinesis stream (point Amazon Connect CTR streaming here).
+    Value: !GetAtt CtrStream.Arn

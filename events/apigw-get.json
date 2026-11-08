@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /contact-history",
+  "rawPath": "/prod/contact-history",
+  "rawQueryString": "agentId=agent-abc-123",
+  "queryStringParameters": {
+    "agentId": "agent-abc-123"
+  },
+  "requestContext": {
+    "http": {
+      "method": "GET",
+      "path": "/prod/contact-history",
+      "protocol": "HTTP/1.1"
+    },
+    "stage": "prod"
+  },
+  "isBase64Encoded": false
+}
