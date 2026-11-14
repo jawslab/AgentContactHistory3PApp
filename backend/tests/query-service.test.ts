@@ -28,6 +28,7 @@ const sampleItem = {
   DisconnectReason: 'CUSTOMER_DISCONNECT',
   InitiationMethod: 'INBOUND',
   QueueName: 'Support',
+  Channel: 'CHAT',
   ExpirationTime: 1,
 };
 
@@ -45,8 +46,16 @@ describe('QueryService', () => {
       DisconnectReason: 'CUSTOMER_DISCONNECT',
       InitiationMethod: 'INBOUND',
       QueueName: 'Support',
+      Channel: 'CHAT',
       Timestamp: '2025-08-14T10:05:30.000Z',
     });
+  });
+
+  it('defaults Channel to VOICE for items stored before Channel existed', async () => {
+    const { Channel: _omit, ...legacyItem } = sampleItem;
+    ddbMock.on(QueryCommand).resolves({ Items: [legacyItem] });
+    const result = await new QueryService().getContactHistory('agent-1');
+    expect(result[0].Channel).toBe('VOICE');
   });
 
   it('returns an empty array for an agent with no data', async () => {

@@ -24,6 +24,11 @@ Parameters:
     Type: Number
     Default: 24
     Description: How many hours a contact history record is retained before TTL deletes it.
+  AllowedChannels:
+    Type: String
+    Default: VOICE
+    Description: >
+      Comma-separated Amazon Connect channels to store (e.g. VOICE or VOICE,CHAT).
   CorsAllowOrigin:
     Type: String
     Default: "*"
@@ -92,6 +97,7 @@ Resources:
       Environment:
         Variables:
           TTL_HOURS: !Ref TtlHours
+          ALLOWED_CHANNELS: !Ref AllowedChannels
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref ContactHistoryTable

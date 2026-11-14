@@ -3,16 +3,35 @@ import { getDocClient, getTableName } from '../shared/dynamo';
 import { logger } from '../shared/logger';
 import { ContactHistoryItem, ContactTraceRecord } from '../shared/types';
 
-/** Contact states we persist. A CTR is only written once the contact has disconnected. */
-const VOICE_CHANNEL = 'VOICE';
+/** Channel assumed when a CTR has no Channel field (older/partial records). */
+const DEFAULT_CHANNEL = 'VOICE';
+
+/**
+ * Parse a comma-separated channel list (e.g. "VOICE,CHAT") into upper-case values.
+ * Falls back to VOICE only when the list is empty.
+ */
+export function parseAllowedChannels(raw?: string | null): string[] {
+  const channels = (raw ?? '')
+    .split(',')
+    .map((c) => c.trim().toUpperCase())
+    .filter((c) => c.length > 0);
+  return channels.length > 0 ? channels : [DEFAULT_CHANNEL];
+}
 
 export class CtrProcessor {
-  constructor(private readonly ttlHours: number = Number(process.env.TTL_HOURS ?? 24)) {}
+  private readonly allowedChannels: string[];
+
+  constructor(
+    private readonly ttlHours: number = Number(process.env.TTL_HOURS ?? 24),
+    allowedChannels: string[] = parseAllowedChannels(process.env.ALLOWED_CHANNELS)
+  ) {
+    this.allowedChannels = allowedChannels.map((c) => c.toUpperCase());
+  }
 
   /**
-   * Decide whether a CTR represents a completed voice contact that was handled by an
-   * agent. Non-voice channels, abandoned contacts, and queue callbacks with no agent
-   * are skipped.
+   * Decide whether a CTR represents a completed contact, on an allowed channel, that
+   * was handled by an agent. Other channels, abandoned contacts, and queue callbacks
+   * with no agent are skipped.
    */
   isProcessable(ctr: ContactTraceRecord): boolean {
     if (!ctr || typeof ctr !== 'object') return false;
@@ -20,9 +39,9 @@ export class CtrProcessor {
     // Only persist contacts that reached an agent.
     const agent = ctr.Agent;
     if (!agent || !(agent.ARN || agent.Username)) return false;
-    // Only voice contacts (the blog scopes this to call history). Treat a missing
-    // channel as voice to stay permissive with partial records from older streams.
-    if (ctr.Channel && ctr.Channel.toUpperCase() !== VOICE_CHANNEL) return false;
+    // Only allowed channels (default VOICE, as in the blog). Treat a missing channel
+    // as voice to stay permissive with partial records from older streams.
+    if (!this.allowedChannels.includes(this.channelOf(ctr))) return false;
     // Must be a completed contact.
     if (!ctr.DisconnectTimestamp) return false;
     return true;
@@ -49,6 +68,7 @@ export class CtrProcessor {
       DisconnectReason: ctr.DisconnectReason ?? 'UNKNOWN',
       InitiationMethod: ctr.InitiationMethod ?? 'UNKNOWN',
       QueueName: ctr.Queue?.Name ?? 'N/A',
+      Channel: this.channelOf(ctr),
       ExpirationTime: this.computeExpiration(timestampMs),
     };
   }
@@ -85,6 +105,10 @@ export class CtrProcessor {
       if (last) return last;
     }
     return username ?? undefined;
+  }
+
+  private channelOf(ctr: ContactTraceRecord): string {
+    return (ctr.Channel ?? DEFAULT_CHANNEL).toUpperCase();
   }
 
   private toEpochMs(value?: string | null): number | undefined {

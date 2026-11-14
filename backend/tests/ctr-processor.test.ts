@@ -1,7 +1,7 @@
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { CtrProcessor } from '../src/ctr-processor/ctr-processor';
+import { CtrProcessor, parseAllowedChannels } from '../src/ctr-processor/ctr-processor';
 import { __setDocClient } from '../src/shared/dynamo';
 import { ContactTraceRecord } from '../src/shared/types';
 
@@ -65,6 +65,42 @@ describe('CtrProcessor.isProcessable', () => {
 
   it('rejects null / non-object input', () => {
     expect(p.isProcessable(null as unknown as ContactTraceRecord)).toBe(false);
+  });
+
+  it('treats a missing channel as voice', () => {
+    expect(p.isProcessable(inboundCtr({ Channel: undefined }))).toBe(true);
+  });
+});
+
+describe('CtrProcessor allowed channels', () => {
+  const p = new CtrProcessor(24, ['VOICE', 'CHAT']);
+
+  it('accepts CHAT when it is allowed', () => {
+    expect(p.isProcessable(inboundCtr({ Channel: 'CHAT' }))).toBe(true);
+  });
+
+  it('still accepts VOICE when CHAT is also allowed', () => {
+    expect(p.isProcessable(inboundCtr())).toBe(true);
+  });
+
+  it('rejects a channel outside the allowed list', () => {
+    expect(p.isProcessable(inboundCtr({ Channel: 'TASK' }))).toBe(false);
+  });
+
+  it('stores the channel on the item', () => {
+    expect(p.mapToItem(inboundCtr({ Channel: 'chat' })).Channel).toBe('CHAT');
+    expect(p.mapToItem(inboundCtr({ Channel: undefined })).Channel).toBe('VOICE');
+  });
+});
+
+describe('parseAllowedChannels', () => {
+  it('ignores spaces, case, and empty entries', () => {
+    expect(parseAllowedChannels(' voice , Chat ,, ')).toEqual(['VOICE', 'CHAT']);
+  });
+
+  it('defaults to VOICE when unset or empty', () => {
+    expect(parseAllowedChannels(undefined)).toEqual(['VOICE']);
+    expect(parseAllowedChannels('')).toEqual(['VOICE']);
   });
 });
 

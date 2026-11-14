@@ -14,15 +14,16 @@ let agentClientPromise: Promise<AgentClient> | null = null;
 function initAgentClient(): Promise<AgentClient> {
   return new Promise<AgentClient>((resolve, reject) => {
     try {
+      // Resolve only once the workspace has connected (onCreate), so requests such as
+      // getARN() are not sent before the handshake completes.
       const { provider } = AmazonConnectApp.init({
         onCreate: async () => {
-          // App is ready; the provider is available synchronously below.
+          resolve(new AgentClient({ provider }));
         },
         onDestroy: async () => {
           agentClientPromise = null;
         },
       });
-      resolve(new AgentClient(provider));
     } catch (err) {
       reject(err instanceof Error ? err : new Error(String(err)));
     }

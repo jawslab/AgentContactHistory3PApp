@@ -19,6 +19,8 @@ export interface ContactHistoryItem {
   InitiationMethod: string;
   /** Name of the inbound or outbound queue. */
   QueueName: string;
+  /** VOICE, CHAT, etc. Optional because items written before this field existed lack it. */
+  Channel?: string;
   /** DynamoDB TTL attribute (epoch seconds). */
   ExpirationTime: number;
 }
@@ -31,6 +33,8 @@ export interface ContactRecordDto {
   DisconnectReason: string;
   InitiationMethod: string;
   QueueName: string;
+  /** VOICE, CHAT, etc. */
+  Channel: string;
   /** ISO-8601 timestamp of the contact. */
   Timestamp: string;
 }

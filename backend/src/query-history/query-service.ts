@@ -62,6 +62,8 @@ function toDto(item: ContactHistoryItem): ContactRecordDto {
     DisconnectReason: item.DisconnectReason,
     InitiationMethod: item.InitiationMethod,
     QueueName: item.QueueName,
+    // Items written before Channel was stored were voice-only.
+    Channel: item.Channel ?? 'VOICE',
     Timestamp: new Date(item.sk).toISOString(),
   };
 }

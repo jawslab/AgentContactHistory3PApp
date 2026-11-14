@@ -69,6 +69,7 @@ const ContactHistory: React.FC = () => {
             <thead>
               <tr>
                 <th>Time</th>
+                <th>Channel</th>
                 <th>Customer Number</th>
                 <th>Queue</th>
                 <th>Duration</th>
@@ -80,6 +81,7 @@ const ContactHistory: React.FC = () => {
               {records.map((r) => (
                 <tr key={r.ContactId}>
                   <td>{formatTimestamp(r.Timestamp)}</td>
+                  <td>{r.Channel}</td>
                   <td>{r.CustomerEndpointAddress}</td>
                   <td>{r.QueueName}</td>
                   <td>{formatDuration(r.AgentInteractionDuration)}</td>
@@ -107,6 +109,10 @@ const ContactHistory: React.FC = () => {
                 <div className="ch-card-row">
                   <span className="ch-card-label">Time</span>
                   <span>{formatTimestamp(r.Timestamp)}</span>
+                </div>
+                <div className="ch-card-row">
+                  <span className="ch-card-label">Channel</span>
+                  <span>{r.Channel}</span>
                 </div>
                 <div className="ch-card-row">
                   <span className="ch-card-label">Queue</span>
